@@ -1,6 +1,7 @@
 package mobilewallet
 
 import (
+	"encoding/base64"
 	"bytes"
 	"context"
 	"encoding/hex"
@@ -1351,7 +1352,7 @@ func (lw *LibWallet) SignMessage(passphrase []byte, address string, message stri
 	return sig, nil
 }
 
-func (lw *LibWallet) VerifyMessage(address string, message string, signatureHex string) (bool, error) {
+func (lw *LibWallet) VerifyMessage(address string, message string, signatureBase64 string) (bool, error) {
 	var valid bool
 
 	addr, err := dcrutil.DecodeAddress(address)
@@ -1359,8 +1360,8 @@ func (lw *LibWallet) VerifyMessage(address string, message string, signatureHex 
 		return false, translateError(err)
 	}
 
-	signature, err := hex.DecodeString(signatureHex)
-	if err != nil{
+	signature, err := DecodeBase64(signatureBase64)
+	if err != nil {
 		return false, err
 	}
 
@@ -1380,7 +1381,6 @@ func (lw *LibWallet) VerifyMessage(address string, message string, signatureHex 
 	if err != nil {
 		return false, translateError(err)
 	}
-
 
 	return valid, nil
 }
@@ -1471,4 +1471,17 @@ func translateError(err error) error {
 
 func EncodeHex(hexBytes []byte) string {
 	return hex.EncodeToString(hexBytes)
+}
+
+func EncodeBase64(text []byte) string {
+	return base64.StdEncoding.EncodeToString(text)
+}
+
+func DecodeBase64(base64Text string) ([]byte, error){
+	b, err := base64.StdEncoding.DecodeString(base64Text)
+	if err != nil{
+		return nil, err
+	}
+
+	return b, nil
 }

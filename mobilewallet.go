@@ -1351,6 +1351,40 @@ func (lw *LibWallet) SignMessage(passphrase []byte, address string, message stri
 	return sig, nil
 }
 
+func (lw *LibWallet) VerifyMessage(address string, message string, signatureHex string) (bool, error) {
+	var valid bool
+
+	addr, err := dcrutil.DecodeAddress(address)
+	if err != nil {
+		return false, translateError(err)
+	}
+
+	signature, err := hex.DecodeString(signatureHex)
+	if err != nil{
+		return false, err
+	}
+
+	// Addresses must have an associated secp256k1 private key and therefore
+	// must be P2PK or P2PKH (P2SH is not allowed).
+	switch a := addr.(type) {
+	case *dcrutil.AddressSecpPubKey:
+	case *dcrutil.AddressPubKeyHash:
+		if a.DSA(a.Net()) != dcrec.STEcdsaSecp256k1 {
+			return false, errors.New(ErrInvalidAddress)
+		}
+	default:
+		return false, errors.New(ErrInvalidAddress)
+	}
+
+	valid, err = wallet.VerifyMessage(message, addr, signature)
+	if err != nil {
+		return false, translateError(err)
+	}
+
+
+	return valid, nil
+}
+
 func (lw *LibWallet) CallJSONRPC(method string, args string, address string, username string, password string, caCert string) (string, error) {
 	arguments := strings.Split(args, ",")
 	params := make([]interface{}, 0)

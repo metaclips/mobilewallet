@@ -11,10 +11,10 @@ import (
 
 	"github.com/decred/dcrd/chaincfg"
 	"github.com/decred/dcrd/dcrutil"
-	"github.com/decred/dcrwallet/chain"
+	"github.com/decred/dcrwallet/chain/v2"
 	"github.com/decred/dcrwallet/errors"
-	"github.com/decred/dcrwallet/ticketbuyer"
-	"github.com/decred/dcrwallet/wallet"
+	"github.com/decred/dcrwallet/ticketbuyer/v2"
+	wallet "github.com/decred/dcrwallet/wallet/v2"
 	_ "github.com/decred/dcrwallet/wallet/drivers/bdb" // driver loaded during init
 	_ "github.com/raedahgroup/dcrlibwallet/badgerdb"   // initialize badger driver
 )
@@ -40,7 +40,7 @@ type WalletLoader struct {
 	db          wallet.DB
 	dbDriver    string
 
-	purchaseManager *ticketbuyer.PurchaseManager
+	//purchaseManager *ticketbuyer.PurchaseManager
 	ntfnClient      wallet.MainTipChangedNotificationsClient
 
 	stakeOptions    *StakeOptions

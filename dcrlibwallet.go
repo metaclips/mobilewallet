@@ -11,10 +11,10 @@ import (
 	"github.com/decred/dcrd/dcrjson"
 	"github.com/decred/dcrwallet/errors"
 	"github.com/decred/dcrwallet/netparams"
-	"github.com/decred/dcrwallet/wallet"
-	"github.com/decred/dcrwallet/wallet/txrules"
+	wallet "github.com/decred/dcrwallet/wallet/v2"
+	"github.com/decred/dcrwallet/wallet/v2/txrules"
 	"github.com/raedahgroup/dcrlibwallet/utils"
-	"go.etcd.io/bbolt"
+	bolt "go.etcd.io/bbolt"
 )
 
 const (

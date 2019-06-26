@@ -4,8 +4,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/decred/dcrwallet/chain"
-	"github.com/decred/dcrwallet/spv"
+	"github.com/decred/dcrwallet/chain/v2"
+	"github.com/decred/dcrwallet/spv/v2"
 )
 
 const (

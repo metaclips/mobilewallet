@@ -16,7 +16,7 @@ import (
 	"github.com/decred/dcrd/dcrutil"
 	"github.com/decred/dcrd/txscript"
 	"github.com/decred/dcrd/wire"
-	"github.com/decred/dcrwallet/wallet"
+	wallet "github.com/decred/dcrwallet/wallet/v2"
 )
 
 type TransactionListener interface {

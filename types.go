@@ -40,9 +40,6 @@ type Account struct {
 
 type Accounts struct {
 	Count              int
-	ErrorMessage       string
-	ErrorCode          int
-	ErrorOccurred      bool
 	Acc                []*Account
 	CurrentBlockHash   []byte
 	CurrentBlockHeight int32

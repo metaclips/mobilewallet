@@ -12,25 +12,27 @@ import (
 	"github.com/decred/dcrd/dcrjson"
 	"github.com/decred/dcrwallet/errors"
 	"github.com/decred/dcrwallet/netparams"
-	"github.com/decred/dcrwallet/wallet"
 	"github.com/decred/dcrwallet/wallet/txrules"
+	wallet "github.com/decred/dcrwallet/wallet/v2"
 	"github.com/raedahgroup/dcrlibwallet/utils"
-	"go.etcd.io/bbolt"
+	bolt "go.etcd.io/bbolt"
 )
 
 const (
-	logFileName = "dcrlibwallet.log"
-	txDbName    = "tx.db"
+	txDbName = "tx.db"
 
 	BlockValid = 1 << 0
 )
 
 type LibWallet struct {
-	walletDataDir string
-	activeNet     *netparams.Params
-	walletLoader  *WalletLoader
-	wallet        *wallet.Wallet
-	txDB          *storm.DB
+	WalletAlias   string `storm:"id,unique"`
+	WalletDataDir string
+	WalletSeed    string
+
+	activeNet    *netparams.Params
+	walletLoader *WalletLoader
+	wallet       *wallet.Wallet
+	txDB         *storm.DB
 	*syncData
 
 	shuttingDown chan bool
@@ -43,8 +45,7 @@ func NewLibWallet(homeDir string, dbDriver string, netType string) (*LibWallet, 
 		return nil, fmt.Errorf("unsupported network type: %s", netType)
 	}
 
-	walletDataDir := filepath.Join(homeDir, activeNet.Name)
-	return newLibWallet(walletDataDir, dbDriver, activeNet)
+	return newLibWallet(homeDir, dbDriver, activeNet)
 }
 
 func NewLibWalletWithDbPath(walletDataDir string, activeNet *netparams.Params) (*LibWallet, error) {
@@ -53,7 +54,6 @@ func NewLibWalletWithDbPath(walletDataDir string, activeNet *netparams.Params) (
 
 func newLibWallet(walletDataDir, walletDbDriver string, activeNet *netparams.Params) (*LibWallet, error) {
 	errors.Separator = ":: "
-	initLogRotator(filepath.Join(walletDataDir, logFileName))
 
 	// open database for indexing transactions for faster loading
 	txDB, err := storm.Open(filepath.Join(walletDataDir, txDbName))
@@ -97,7 +97,7 @@ func newLibWallet(walletDataDir, walletDbDriver string, activeNet *netparams.Par
 
 	// Finally Init LibWallet
 	lw := &LibWallet{
-		walletDataDir: walletDataDir,
+		WalletDataDir: walletDataDir,
 		txDB:          txDB,
 		activeNet:     activeNet,
 		walletLoader:  walletLoader,
@@ -119,12 +119,7 @@ func (lw *LibWallet) Shutdown() {
 		lw.rpcClient.Stop()
 	}
 
-	lw.CancelSync()
-
-	if logRotator != nil {
-		log.Info("Shutting down log rotator")
-		logRotator.Close()
-	}
+	// lw.CancelSync()
 
 	if _, loaded := lw.walletLoader.LoadedWallet(); loaded {
 		err := lw.walletLoader.UnloadWallet()

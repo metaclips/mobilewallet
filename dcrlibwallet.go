@@ -12,8 +12,8 @@ import (
 	"github.com/decred/dcrd/dcrjson"
 	"github.com/decred/dcrwallet/errors"
 	"github.com/decred/dcrwallet/netparams"
-	"github.com/decred/dcrwallet/wallet/txrules"
-	wallet "github.com/decred/dcrwallet/wallet/v2"
+	wallet "github.com/decred/dcrwallet/wallet/v3"
+	"github.com/decred/dcrwallet/wallet/v3/txrules"
 	"github.com/raedahgroup/dcrlibwallet/utils"
 	bolt "go.etcd.io/bbolt"
 )
@@ -114,10 +114,6 @@ func (lw *LibWallet) Shutdown() {
 
 	// Trigger shuttingDown signal to cancel all contexts created with `contextWithShutdownCancel`.
 	lw.shuttingDown <- true
-
-	if lw.rpcClient != nil {
-		lw.rpcClient.Stop()
-	}
 
 	// lw.CancelSync()
 

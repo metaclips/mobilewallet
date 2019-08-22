@@ -2,16 +2,15 @@ package dcrlibwallet
 
 import (
 	"bytes"
-	"context"
 	"time"
 
 	"github.com/decred/dcrd/dcrutil"
-	"github.com/decred/dcrd/txscript"
+	"github.com/decred/dcrd/txscript/v2"
 	"github.com/decred/dcrd/wire"
 	"github.com/decred/dcrwallet/errors"
-	wallet "github.com/decred/dcrwallet/wallet/v2"
-	txauthor "github.com/decred/dcrwallet/wallet/v2/txauthor"
-	txrules "github.com/decred/dcrwallet/wallet/v2/txrules"
+	wallet "github.com/decred/dcrwallet/wallet/v3"
+	txauthor "github.com/decred/dcrwallet/wallet/v3/txauthor"
+	txrules "github.com/decred/dcrwallet/wallet/v3/txrules"
 	"github.com/raedahgroup/dcrlibwallet/txhelper"
 )
 
@@ -132,7 +131,9 @@ func (lw *LibWallet) SendTransaction(amount int64, fromAccount int32, toAddress 
 		return nil, err
 	}
 
-	txHash, err := lw.wallet.PublishTransaction(&msgTx, serializedTransaction.Bytes(), n)
+	ctx, _ := lw.contextWithShutdownCancel()
+
+	txHash, err := lw.wallet.PublishTransaction(ctx, &msgTx, serializedTransaction.Bytes(), n)
 	if err != nil {
 		return nil, translateError(err)
 	}
@@ -158,12 +159,12 @@ func (lw *LibWallet) constructTransaction(amount int64, fromAccount int32, toAdd
 
 	if spendAllFundsInAccount {
 		outputSelectionAlgorithm = wallet.OutputSelectionAlgorithmAll
-		changeSource, err = txhelper.MakeTxChangeSource(toAddress)
+		changeSource, err = txhelper.MakeTxChangeSource(toAddress, lw.activeNet.Params)
 	} else {
 		outputSelectionAlgorithm = wallet.OutputSelectionAlgorithmDefault
 		outputs, err = txhelper.MakeTxOutputs([]txhelper.TransactionDestination{
 			{Address: toAddress, Amount: dcrutil.Amount(amount).ToCoin()},
-		})
+		}, lw.activeNet.Params)
 	}
 
 	if err != nil {
@@ -180,7 +181,7 @@ func (lw *LibWallet) PublishUnminedTransactions() error {
 	if err != nil {
 		return errors.New(ErrNotConnected)
 	}
-	ctx, _ := lw.contextWithShutdownCancel(context.Background())
+	ctx, _ := lw.contextWithShutdownCancel()
 	err = lw.wallet.PublishUnminedTransactions(ctx, netBackend)
 	return err
 }

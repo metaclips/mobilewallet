@@ -2,7 +2,6 @@ package dcrlibwallet
 
 import (
 	"bytes"
-	"context"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -10,13 +9,13 @@ import (
 
 	"github.com/asdine/storm"
 	"github.com/asdine/storm/q"
-	"github.com/decred/dcrd/blockchain/stake"
-	"github.com/decred/dcrd/chaincfg"
+	"github.com/decred/dcrd/blockchain/stake/v2"
+	"github.com/decred/dcrd/chaincfg/v2"
 	"github.com/decred/dcrd/chaincfg/chainhash"
-	"github.com/decred/dcrd/dcrutil"
-	"github.com/decred/dcrd/txscript"
+	"github.com/decred/dcrd/dcrutil/v2"
+	"github.com/decred/dcrd/txscript/v2"
 	"github.com/decred/dcrd/wire"
-	wallet "github.com/decred/dcrwallet/wallet/v2"
+	wallet "github.com/decred/dcrwallet/wallet/v3"
 )
 
 type TransactionListener interface {
@@ -52,7 +51,7 @@ const (
 )
 
 func (lw *LibWallet) IndexTransactions(beginHeight int32, endHeight int32, afterIndexing func()) error {
-	ctx, _ := lw.contextWithShutdownCancel(context.Background())
+	ctx, _ := lw.contextWithShutdownCancel()
 
 	var totalIndex int32
 	var txEndHeight uint32
@@ -478,7 +477,7 @@ func decodeTxOutputs(mtx *wire.MsgTx, chainParams *chaincfg.Params) []DecodedOut
 						"commitment addr output for tx hash "+
 						"%v, output idx %v", mtx.TxHash(), i)}
 			} else {
-				encodedAddrs = []string{addr.EncodeAddress()}
+				encodedAddrs = []string{addr.Address()}
 			}
 		} else {
 			// Ignore the error here since an error means the script
@@ -488,7 +487,7 @@ func decodeTxOutputs(mtx *wire.MsgTx, chainParams *chaincfg.Params) []DecodedOut
 				v.Version, v.PkScript, chainParams)
 			encodedAddrs = make([]string, len(addrs))
 			for j, addr := range addrs {
-				encodedAddrs[j] = addr.EncodeAddress()
+				encodedAddrs[j] = addr.Address()
 			}
 		}
 

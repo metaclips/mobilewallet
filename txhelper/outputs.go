@@ -6,7 +6,7 @@ import (
 	"github.com/raedahgroup/dcrlibwallet/addresshelper"
 )
 
-func MakeTxOutputs(destinations []TransactionDestination,  net dcrutil.AddressParams) (outputs []*wire.TxOut, err error) {
+func MakeTxOutputs(destinations []TransactionDestination, net dcrutil.AddressParams) (outputs []*wire.TxOut, err error) {
 	for _, destination := range destinations {
 		var output *wire.TxOut
 		output, err = MakeTxOutput(destination, net)

@@ -33,7 +33,10 @@ type LibWallet struct {
 	walletLoader *WalletLoader
 	wallet       *wallet.Wallet
 	txDB         *storm.DB
-	*syncData
+
+	synced     bool
+	syncing    bool
+	rescanning bool
 
 	shuttingDown chan bool
 	cancelFuncs  []context.CancelFunc
@@ -90,18 +93,12 @@ func newLibWallet(walletDataDir, walletDbDriver string, activeNet *netparams.Par
 		walletLoader.SetDatabaseDriver(walletDbDriver)
 	}
 
-	syncData := &syncData{
-		syncCanceled:          make(chan bool),
-		syncProgressListeners: make(map[string]SyncProgressListener),
-	}
-
 	// Finally Init LibWallet
 	lw := &LibWallet{
 		WalletDataDir: walletDataDir,
 		txDB:          txDB,
 		activeNet:     activeNet,
 		walletLoader:  walletLoader,
-		syncData:      syncData,
 	}
 
 	lw.listenForShutdown()
@@ -110,12 +107,9 @@ func newLibWallet(walletDataDir, walletDbDriver string, activeNet *netparams.Par
 }
 
 func (lw *LibWallet) Shutdown() {
-	log.Info("Shutting down dcrlibwallet")
 
 	// Trigger shuttingDown signal to cancel all contexts created with `contextWithShutdownCancel`.
 	lw.shuttingDown <- true
-
-	// lw.CancelSync()
 
 	if _, loaded := lw.walletLoader.LoadedWallet(); loaded {
 		err := lw.walletLoader.UnloadWallet()

@@ -137,12 +137,35 @@ func (lw *LibWallet) IndexTransactions(beginHeight int32, endHeight int32, after
 }
 
 func (lw *LibWallet) TransactionNotification(listener TransactionListener) {
-	go func() {
-		n := lw.wallet.NtfnServer.TransactionNotifications()
-		defer n.Done()
-		for {
-			v := <-n.C
-			for _, transaction := range v.UnminedTransactions {
+	n := lw.wallet.NtfnServer.TransactionNotifications()
+	defer n.Done()
+	for {
+		v := <-n.C
+		for _, transaction := range v.UnminedTransactions {
+			tempTransaction, err := lw.parseTxSummary(&transaction, nil)
+			if err != nil {
+				log.Errorf("Error ntfn parse tx: %v", err)
+				return
+			}
+
+			err = lw.replaceTxIfExist(tempTransaction)
+			if err != nil {
+				log.Errorf("Tx ntfn replace tx err: %v", err)
+			}
+
+			log.Info("New Transaction")
+
+			result, err := json.Marshal(tempTransaction)
+			if err != nil {
+				log.Error(err)
+			} else {
+				listener.OnTransaction(string(result))
+			}
+		}
+		for _, block := range v.AttachedBlocks {
+			listener.OnBlockAttached(int32(block.Header.Height), block.Header.Timestamp.UnixNano())
+			for _, transaction := range block.Transactions {
+
 				tempTransaction, err := lw.parseTxSummary(&transaction, nil)
 				if err != nil {
 					log.Errorf("Error ntfn parse tx: %v", err)
@@ -151,38 +174,13 @@ func (lw *LibWallet) TransactionNotification(listener TransactionListener) {
 
 				err = lw.replaceTxIfExist(tempTransaction)
 				if err != nil {
-					log.Errorf("Tx ntfn replace tx err: %v", err)
+					log.Errorf("Incoming block replace tx error :%v", err)
+					return
 				}
-
-				log.Info("New Transaction")
-
-				result, err := json.Marshal(tempTransaction)
-				if err != nil {
-					log.Error(err)
-				} else {
-					listener.OnTransaction(string(result))
-				}
-			}
-			for _, block := range v.AttachedBlocks {
-				listener.OnBlockAttached(int32(block.Header.Height), block.Header.Timestamp.UnixNano())
-				for _, transaction := range block.Transactions {
-
-					tempTransaction, err := lw.parseTxSummary(&transaction, nil)
-					if err != nil {
-						log.Errorf("Error ntfn parse tx: %v", err)
-						return
-					}
-
-					err = lw.replaceTxIfExist(tempTransaction)
-					if err != nil {
-						log.Errorf("Incoming block replace tx error :%v", err)
-						return
-					}
-					listener.OnTransactionConfirmed(fmt.Sprintf("%02x", reverse(transaction.Hash[:])), int32(block.Header.Height))
-				}
+				listener.OnTransactionConfirmed(fmt.Sprintf("%02x", reverse(transaction.Hash[:])), int32(block.Header.Height))
 			}
 		}
-	}()
+	}
 }
 
 func (lw *LibWallet) GetTransaction(txHash []byte) (string, error) {

@@ -1,5 +1,10 @@
 package dcrlibwallet
 
+type BlockInfo struct {
+	Height    int32
+	Timestamp int64
+}
+
 type Amount struct {
 	AtomValue int64
 	DcrValue  float64
@@ -116,6 +121,7 @@ type DecodedOutput struct {
 }
 
 type SyncProgressListener interface {
+	OnSyncStarted()
 	OnPeerConnectedOrDisconnected(numberOfConnectedPeers int32)
 	OnHeadersFetchProgress(headersFetchProgress *HeadersFetchProgressReport)
 	OnAddressDiscoveryProgress(addressDiscoveryProgress *AddressDiscoveryProgressReport)
@@ -124,6 +130,10 @@ type SyncProgressListener interface {
 	OnSyncCanceled(willRestart bool)
 	OnSyncEndedWithError(err error)
 	Debug(debugInfo *DebugInfo)
+
+	OnTransaction(transaction string)
+	OnTransactionConfirmed(hash string, height int32)
+	OnBlockAttached(height int32, timestamp int64)
 }
 
 type GeneralSyncProgress struct {

@@ -22,23 +22,28 @@ const (
 	txDbName = "tx.db"
 
 	BlockValid = 1 << 0
+
+	SpendingPassphraseTypePin  int32 = 0
+	SpendingPassphraseTypePass int32 = 1
 )
 
 type LibWallet struct {
-	WalletID      int `storm:"id,increment"`
-	WalletName    string
-	WalletDataDir string
-	WalletSeed    string
-
-	activeNet    *netparams.Params
-	walletLoader *WalletLoader
-	wallet       *wallet.Wallet
-	txDB         *storm.DB
+	WalletID               int `storm:"id,increment"`
+	WalletName             string
+	WalletDataDir          string
+	WalletSeed             string
+	SpendingPassphraseType int32
+	DiscoveredAccounts     bool
 
 	synced     bool
 	syncing    bool
 	waiting    bool
 	rescanning bool
+
+	activeNet    *netparams.Params
+	walletLoader *WalletLoader
+	wallet       *wallet.Wallet
+	txDB         *storm.DB
 
 	shuttingDown chan bool
 	cancelFuncs  []context.CancelFunc

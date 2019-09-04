@@ -31,6 +31,10 @@ func (lw *LibWallet) GetSpendingPassphraseType() int32 {
 	return lw.SpendingPassphraseType
 }
 
+func (lw *LibWallet) GetWalletSeed() string {
+	return lw.WalletSeed
+}
+
 func (lw *LibWallet) CreateWallet(passphrase string, seedMnemonic string) error {
 	log.Info("Creating Wallet")
 	if len(seedMnemonic) == 0 {
@@ -175,7 +179,7 @@ func (mw *MultiWallet) RenameWallet(walletID int, newName string) error {
 	if strings.HasPrefix(newName, "wallet-") {
 		return errors.New("'wallet-' is a reserved prefix")
 	}
-	
+
 	w, ok := mw.wallets[walletID]
 	if ok {
 		err := mw.db.One("WalletName", newName, &LibWallet{})

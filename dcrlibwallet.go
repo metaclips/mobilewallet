@@ -27,13 +27,18 @@ const (
 	SpendingPassphraseTypePass int32 = 1
 )
 
-type LibWallet struct {
+type WalletProperties struct {
 	WalletID               int `storm:"id,increment"`
 	WalletName             string
 	WalletDataDir          string
 	WalletSeed             string
+	DefaultAccount         int32
 	SpendingPassphraseType int32
 	DiscoveredAccounts     bool
+}
+
+type LibWallet struct {
+	WalletProperties `storm:"inline"`
 
 	synced     bool
 	syncing    bool
@@ -100,12 +105,16 @@ func newLibWallet(walletDataDir, walletDbDriver string, activeNet *netparams.Par
 		walletLoader.SetDatabaseDriver(walletDbDriver)
 	}
 
+	properties := WalletProperties{
+		WalletDataDir: walletDataDir,
+	}
+
 	// Finally Init LibWallet
 	lw := &LibWallet{
-		WalletDataDir: walletDataDir,
-		txDB:          txDB,
-		activeNet:     activeNet,
-		walletLoader:  walletLoader,
+		WalletProperties: properties,
+		txDB:             txDB,
+		activeNet:        activeNet,
+		walletLoader:     walletLoader,
 	}
 
 	lw.listenForShutdown()

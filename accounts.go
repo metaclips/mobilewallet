@@ -7,6 +7,10 @@ import (
 	"github.com/decred/dcrwallet/errors"
 )
 
+func (lw *LibWallet) HasDiscoveredAccounts() bool {
+	return lw.WalletProperties.DiscoveredAccounts
+}
+
 func (lw *LibWallet) GetAccounts(requiredConfirmations int32) (string, error) {
 	accountsResponse, err := lw.GetAccountsRaw(requiredConfirmations)
 	if err != nil {
@@ -48,6 +52,32 @@ func (lw *LibWallet) GetAccountsRaw(requiredConfirmations int32) (*Accounts, err
 	}, nil
 }
 
+func (lw *LibWallet) GetAccount(accountNumber int32, requiredConfirmations int32) (*Account, error) {
+	props, err := lw.wallet.AccountProperties(uint32(accountNumber))
+	if err != nil {
+		return nil, err
+	}
+
+	balance, err := lw.GetAccountBalance(accountNumber, requiredConfirmations)
+	if err != nil {
+		return nil, err
+	}
+
+	
+
+	account := &Account{
+		Number:           accountNumber,
+		Name:             props.AccountName,
+		TotalBalance:     balance.Total,
+		Balance:          balance,
+		ExternalKeyCount: int32(props.LastUsedExternalIndex + 20),
+		InternalKeyCount: int32(props.LastUsedInternalIndex + 20),
+		ImportedKeyCount: int32(props.ImportedKeyCount),
+	}
+
+	return account, nil
+}
+
 func (lw *LibWallet) GetAccountBalance(accountNumber int32, requiredConfirmations int32) (*Balance, error) {
 	balance, err := lw.wallet.CalculateAccountBalance(uint32(accountNumber), requiredConfirmations)
 	if err != nil {
@@ -74,13 +104,13 @@ func (lw *LibWallet) SpendableForAccount(account int32, requiredConfirmations in
 	return int64(bals.Spendable), nil
 }
 
-func (lw *LibWallet) NextAccount(accountName string, privPass []byte) error {
-	_, err := lw.NextAccountRaw(accountName, privPass)
+func (lw *LibWallet) NextAccount(accountName string, privPass []byte) (int32, error) {
+	accountNumber, err := lw.NextAccountRaw(accountName, privPass)
 	if err != nil {
 		log.Error(err)
-		return err
+		return -1, err
 	}
-	return nil
+	return int32(accountNumber), nil
 }
 
 func (lw *LibWallet) NextAccountRaw(accountName string, privPass []byte) (uint32, error) {
@@ -104,7 +134,11 @@ func (lw *LibWallet) NextAccountRaw(accountName string, privPass []byte) (uint32
 
 func (lw *LibWallet) RenameAccount(accountNumber int32, newName string) error {
 	err := lw.wallet.RenameAccount(uint32(accountNumber), newName)
-	return err
+	if err != nil {
+		return translateError(err)
+	}
+
+	return nil
 }
 
 func (lw *LibWallet) AccountName(accountNumber int32) string {
@@ -122,4 +156,24 @@ func (lw *LibWallet) AccountNameRaw(accountNumber uint32) (string, error) {
 
 func (lw *LibWallet) AccountNumber(accountName string) (uint32, error) {
 	return lw.wallet.AccountNumber(accountName)
+}
+
+func (mw *MultiWallet) SetDefaultAccount(walletID int, accountNumber int32) error {
+	w, ok := mw.wallets[walletID]
+	if !ok {
+		return errors.New(ErrNotExist)
+	}
+
+	_, err := w.AccountNameRaw(uint32(accountNumber))
+	if err != nil {
+		return translateError(err)
+	}
+
+	w.DefaultAccount = accountNumber
+	err = mw.db.Save(w)
+	if err != nil {
+		return translateError(err)
+	}
+
+	return nil
 }

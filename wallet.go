@@ -3,7 +3,9 @@ package dcrlibwallet
 import (
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/asdine/storm"
 	"github.com/decred/dcrwallet/errors"
 	wallet "github.com/decred/dcrwallet/wallet/v3"
 	"github.com/decred/dcrwallet/walletseed"
@@ -11,6 +13,40 @@ import (
 
 func (lw *LibWallet) WalletExists() (bool, error) {
 	return lw.walletLoader.WalletExists()
+}
+
+func (lw *LibWallet) GetWalletName() string {
+	return lw.WalletName
+}
+
+func (lw *LibWallet) GetWalletID() int {
+	return lw.WalletID
+}
+
+func (lw *LibWallet) GetDefaultAccount() int32 {
+	return lw.DefaultAccount
+}
+
+func (lw *LibWallet) GetSpendingPassphraseType() int32 {
+	return lw.SpendingPassphraseType
+}
+
+func (lw *LibWallet) GetWalletSeed() string {
+	return lw.WalletSeed
+}
+
+func (mw *MultiWallet) VerifySeed(walletID int, seedMnemonic string) error {
+	w, ok := mw.wallets[walletID]
+	if !ok {
+		return errors.New(ErrNotExist)
+	}
+
+	if w.WalletSeed == seedMnemonic {
+		w.WalletSeed = ""
+		return translateError(mw.db.Save(w))
+	}
+
+	return errors.New(ErrInvalid)
 }
 
 func (lw *LibWallet) CreateWallet(passphrase string, seedMnemonic string) error {
@@ -64,13 +100,21 @@ func (lw *LibWallet) UnlockWallet(privPass []byte) error {
 	}()
 
 	err := loadedWallet.Unlock(privPass, nil)
-	return err
+	if err != nil {
+		return translateError(err)
+	}
+
+	return nil
 }
 
 func (lw *LibWallet) LockWallet() {
-	if lw.wallet.Locked() {
+	if !lw.wallet.Locked() {
 		lw.wallet.Lock()
 	}
+}
+
+func (lw *LibWallet) IsLocked() bool {
+	return lw.wallet.Locked()
 }
 
 func (lw *LibWallet) ChangePrivatePassphrase(oldPass []byte, newPass []byte) error {
@@ -143,4 +187,51 @@ func (lw *LibWallet) DeleteWallet(privatePassphrase []byte) error {
 
 	log.Info("Deleting Wallet")
 	return os.RemoveAll(lw.WalletDataDir)
+}
+
+func (mw *MultiWallet) RenameWallet(walletID int, newName string) error {
+	if strings.HasPrefix(newName, "wallet-") {
+		return errors.New("'wallet-' is a reserved prefix")
+	}
+
+	w, ok := mw.wallets[walletID]
+	if ok {
+		err := mw.db.One("WalletName", newName, &LibWallet{})
+		if err != nil {
+			if err != storm.ErrNotFound {
+				return translateError(err)
+			}
+		} else {
+			return errors.New(ErrExist)
+		}
+
+		w.WalletName = newName
+		return mw.db.Save(w) // update WalletName field
+	}
+
+	return errors.New(ErrNotExist)
+}
+
+func (mw *MultiWallet) DeleteWallet(walletID int, privPass []byte) error {
+	if mw.activeSyncData != nil {
+		return errors.New(ErrSyncAlreadyInProgress)
+	}
+
+	w, ok := mw.wallets[walletID]
+	if ok {
+		err := w.DeleteWallet(privPass)
+		if err != nil {
+			return translateError(err)
+		}
+
+		err = mw.db.DeleteStruct(w)
+		if err != nil {
+			return translateError(err)
+		}
+
+		delete(mw.wallets, walletID)
+		return nil
+	}
+
+	return errors.New(ErrNotExist)
 }
